@@ -1,6 +1,35 @@
 import re
 
 
+class Genome():
+    """
+    A collection of Gene objects. Contains functionality for iterating over
+    itself and returning matches.
+    """
+
+    def __init__(self):
+        pass
+
+
+class Gene():
+    """
+    Given a header and sequence from a FASTA file, creates a representation of
+    a gene.
+
+    """
+
+    def __init__(self, header, sequence):
+        pass
+
+
+class TargetGene(Gene):
+    """
+    A Gene object that contains functionality for finding eligible knockout
+    targets.
+    """
+    pass
+
+
 def read_fasta(filepath):
     """
     Given a path to a FASTA file, return the headers and sequences.
@@ -54,11 +83,11 @@ spacers = list(get_spacers(MECA, k=20, pam_sequence='NGG'))
 for spacer in spacers:
     spacer_seq = spacer[0]
     hits = re.finditer(r'(?=(' + spacer_seq + r'))', genome_data)
-    # print(spacer_seq, hits)
     for hit in hits:
-        matches[spacer_seq] = (hit(0), hit.start())
+        print(f"{spacer_seq} found at {hit.span(1)}")
+        print(hit)
+        matches.setdefault(spacer_seq,)
+        matches[spacer_seq] = (hit, hit.start())
+
 print("spacers: ", len(list(spacers)))
 print("matches: ", len(matches))
-
-for match in matches:
-    print(match[0], match[1])
