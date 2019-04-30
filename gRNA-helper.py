@@ -10,6 +10,7 @@ class Genome():
     def __init__(self, fasta_file=None):
         self.gene_dict = {}
 
+        # If the Genome instance is called with a path to a FASTA file, load it.
         if fasta_file:
             self.load_fasta(fasta_file)
 
@@ -23,6 +24,14 @@ class Genome():
         pass
 
     def find_hits(self, target_sequence):
+        """
+        Given a target sequence (representing a k-nucleotide-long sequence and a
+        PAM), return a list of hits, the genes in which they occur, and the
+        locations of the hits within the genome.
+
+        SAMPLE OUTPUT: "Sequence CGATCGTAATGCTCA hits found in [GENE] at
+        [START_INDEX]"
+        """
         result = []
         # DO STUFF
         return result
@@ -42,6 +51,10 @@ class Gene():
         # TO-DO: Parse header values into a dict?
 
     def parse_header(self, header):
+        """
+        Given a header in FASTA format, parse the parameters and load them into
+        the dict self.info.
+        """
         # Load header data into self.info
         pass
 
