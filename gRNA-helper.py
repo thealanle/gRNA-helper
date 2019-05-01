@@ -76,7 +76,10 @@ class Gene():
         return d
 
     def get_complement(self):
-        return self.sequence[::-1]
+        reverse = self.sequence[::-1]
+        pairs = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
+        result = ''.join([pairs[nuc] for nuc in reverse])
+        return result
 
 
 class TargetGene(Gene):
