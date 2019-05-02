@@ -47,9 +47,10 @@ class Gene():
     def __init__(self, header, sequence):
         self.header = header
         self.sequence = sequence
-        self.info = parse_header(self.header)
+        self.info = self.parse_header(self.header)
+        self.complement = None  # This is None until get_complement is called
 
-    def parse_header(header):
+    def parse_header(self, header):
         """
         Given a header in FASTA format, parse the parameters and load them into
         the dict self.info.
@@ -76,10 +77,14 @@ class Gene():
         return d
 
     def get_complement(self):
-        reverse = self.sequence[::-1]
-        pairs = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
-        result = ''.join([pairs[nuc] for nuc in reverse])
-        return result
+        """
+        Build and return a complement strand.
+        """
+        if self.complement is None:
+            reverse = self.sequence[::-1]
+            pairs = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
+            self.complemnet = ''.join([pairs[nuc] for nuc in reverse])
+        return self.complement
 
 
 class TargetGene(Gene):
@@ -105,26 +110,6 @@ class TargetGene(Gene):
         result = sequence
         result = result.replace('N', '[ACGT]')
         return result
-
-
-def parse_header(header):
-    """
-    <TEMPORARY FUNCTION FOR TESTING>
-    Given a header in FASTA format, parse the parameters and load them into
-    the dict self.info.
-    """
-    d = {}
-    results = list(re.finditer(r'>lcl\|([\w\.]*)|\[([^=]+)=([^\]]+)]', header))
-    d['gene_id'] = results[0].group(1)
-    for result in results[1:]:
-        d[result.group(2)] = result.group(3)
-    if 'location' in d.keys():
-        raw_location = d['location']
-        raw_location = raw_location.replace('<', '')
-        raw_location = raw_location.replace('>', '')
-        span = raw_location.split('..')
-        d['location'] = tuple([int(index) for index in span])
-    return d
 
 
 # TODO: Move this into a separate file...
