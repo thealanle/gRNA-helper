@@ -55,9 +55,10 @@ class Gene():
         Given a header in FASTA format, parse the parameters and load them into
         the dict self.info.
         """
+
         d = {}
         expression = r'>lcl\|([\w\.]*)|\[([^=]+)=([^\]]+)]'
-        results = re.findall(expression, header)
+        results = list(re.finditer(expression, header))
 
         # There is only one instance of Group 1, which contains database and
         # gene ID information.
@@ -80,10 +81,11 @@ class Gene():
         """
         Build and return a complement strand.
         """
+
         if self.complement is None:
             reverse = self.sequence[::-1]
             pairs = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
-            self.complemnet = ''.join([pairs[nuc] for nuc in reverse])
+            self.complement = ''.join([pairs[nuc] for nuc in reverse])
         return self.complement
 
 
@@ -107,6 +109,7 @@ class TargetGene(Gene):
         Convert a gene sequence to a regular expression snippet and return the
         result.
         """
+
         result = sequence
         result = result.replace('N', '[ACGT]')
         return result
