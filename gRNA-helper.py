@@ -25,6 +25,7 @@ class Genome():
 
     def find_hits(self, target_sequence):
         """
+        <<WORK IN PROGRESS>>
         Given a target sequence (representing a k-nucleotide-long sequence and a
         PAM), return a list of hits, the genes in which they occur, and the
         locations of the hits within the genome.
@@ -33,10 +34,18 @@ class Genome():
         """
 
         hits = []
-        # DO STUFF
+        meca_target = TargetGene(MRSA_HEADER, MRSA_SEQUENCE)
+        spacers = list(meca_target.find_protospacers())
+        for spacer in spacers:
+            spacer_seq = spacer[0]
+            expression = r'(?=(' + spacer_seq + r'))'
+            hits = re.finditer(expression, genome_data)
+            for hit in hits:
+                print(f"{spacer_seq} found at {hit.span(1)}")
+                matches[spacer_seq] = (hit, hit.span(1))
         return hits
 
-    def choose_gene(self, query=input()):
+    def choose_gene(self, query):
         """
         <<WORK IN PROGRESS>>
         Given a search query, return a menu of all results and return the chosen
