@@ -129,12 +129,33 @@ class TargetGene(Gene):
     """
 
     def find_protospacers(self, k=20, pam_sequence='NGG'):
+        print("Finding protospacers...")
+        p_length = k + len(pam_sequence)  # Length of protospacer + PAM
         pam_sequence = self.seq_to_regex(pam_sequence)
         expression = r'(?=([ACGT]{' + str(k) + r'}' + str(pam_sequence) + r'))'
+        gene_start = self.info['location']['start']
+        gene_end = self.info['location']['end']
+        print("start and end: ", gene_start, gene_end, p_length)
+
+        # Search the forward strand
         for result in re.finditer(expression, self.sequence):
-            matched_sequence = result.group(1)
-            matched_index = int(result.start())
-            yield matched_sequence, matched_index
+            match = result.group(1)
+            match_start = gene_start + result.start()
+            match_end = match_start + p_length - 1
+            span = (match_start, match_end)
+            print(match, span)
+            yield match, span
+
+        # Search the complementary strand
+        for result in re.finditer(expression, self.get_complement()):
+            match = result.group(1)
+            match_start = gene_end - result.start()
+            match_end = match_start - p_length + 1
+            span = (match_start, match_end)
+            print(match, span, "complement strand")
+            yield match, span
+
+        print("All protospacers identified.")
 
     def seq_to_regex(self, sequence):
         """
@@ -142,15 +163,18 @@ class TargetGene(Gene):
         result.
         """
 
+        # This section lacks complete functionality, so it's overly verbose
+        # for what it currently accomplishes.
         result = sequence
         result = result.replace('N', '[ACGT]')
         return result
 
 
-# TODO: Move this into a separate file...
-MECA_HEADER = """>lcl|KF058908.1_cds_AGU99981.1_1 [gene=mecA] [protein=penicillin-binding protein] [protein_id=AGU99981.1] [location=<1..>1983] [gbkey=CDS]"""
+def get_complement(sequence):
+    pairs = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
+    result = ''.join([pairs[nuc] for nuc in sequence[::-1]])
+    return result
 
-MECA_SEQUENCE = """ATGAAAAAGATAAAAATTGTTCCACTTATTTTAATAGTTGTAGTTGTCGGGTTTGGTATATATTTTTATGCTTCAAAAGATAAAGAAATTAATAATACTATTGATGCAATTGAAGATAAAAATTTCAAACAAGTTTATAAAGATAGCAGTTATATTTCTAAAAGCGATAATGGTGAAGTAGAAATGACTGAACGTCCGATAAAAATATATAATAGTTTAGGCGTTAAAGATATAAACATTCAGGATCGTAAAATAAAAAAAGTATCTAAAAATAAAAAACGAGTAGATGCTCAATATAAAATTAAAACAAACTACGGTAACATTGATCGCAACGTTCAATTTAATTTTGTTAAAGAAGATGGTATGTGGAAGTTAGATTGGGATCATAGCGTCATTATTCCAGGAATGCAGAAAGACCAAAGCATACATATTGAAAATTTAAAATCAGAACGTGGTAAAATTTTAGACCGAAACAATGTGGAATTGGCCAATACAGGAACAGCATATGAGATAGGCATCGTTCCAAAGAATGTATCTAAAAAAGATTATAAAGCAATCGCTAAAGAACTAAGTATTTCTGAAGACTATATCAAACAACAAATGGATCAAAATTGGGTACAAGATGATACCTTCGTTCCACTTAAAACCGTTAAAAAAATGGATGAATATTTAAGTGATTTCGCAAAAAAATTTCATCTTACAACTAATGAAACAGAAAGTCGTAACTATCCTCTAGGAAAAGCGACTTCACATCTATTAGGTTATGTTGGTCCCATTAACTCTGAAGAATTAAAACAAAAAGAATATAAAGGCTATAAAGATGATGCAGTTATTGGTAAAAAGGGACTCGAAAAACTTTACGATAAAAAGCTCCAACATGAAGATGGCTATCGTGTCACAATCGTTGACGATAATAGCAATACAATCGCACATACATTAATAGAGAAAAAGAAAAAAGATGGCAAAGATATTCAACTAACTATTGATGCTAAAGTTCAAAAGAGTATTTATAACAACATGAAAAATGATTATGGCTCAGGTACTGCTATCCACCCTCAAACAGGTGAATTATTAGCACTTGTAAGCACACCTTCATATGACGTCTATCCATTTATGTATGGCATGAGTAACGAAGAATATAATAAATTAACCGAAGATAAAAAAGAACCTCTGCTCAACAAGTTCCAGATTACAACTTCACCAGGTTCAACTCAAAAAATATTAACAGCAATGATTGGGTTAAATAACAAAACATTAGACGATAAAACAAGTTATAAAATCGATGGTAAAGGTTGGCAAAAAGATAAATCTTGGGGTGGTTACAACGTTACAAGATATGAAGTGGTAAATGGTAATATCGACTTAAAACAAGCAATAGAATCATCAGATAACATTTTCTTTGCTAGAGTAGCACTCGAATTAGGCAGTAAGAAATTTGAAAAAGGCATGAAAAAACTAGGTGTTGGTGAAGATATACCAAGTGATTATCCATTTTATAATGCTCAAATTTCAAACAAAAATTTAGATAATGAAATATTATTAGCTGATTCAGGTTACGGACAAGGTGAAATACTGATTAACCCAGTACAGATCCTTTCAATCTATAGCGCATTAGAAAATAATGGCAATATTAACGCACCTCACTTATTAAAAGACACGAAAAACAAAGTTTGGAAGAAAAATATTATTTCCAAAGAAAATATCAATCTATTAACTGATGGTATGCAACAAGTCGTAAATAAAACACATAAAGAAGATATTTATAGATCTTATGCAAACTTAATTGGCAAATCCGGTACTGCAGAACTCAAAATGAAACAAGGAGAAACTGGCAGACAAATTGGGTGGTTTATATCATATGATAAAGATAATCCAAACATGATGATGGCTATTAATGTTAAAGATGTACAAGATAAAGGAATGGCTAGCTACAATGCCAAAATCTCAGGTAAAGTGTATGATGAGCTATATGAGAACGGTAAT"""
 
 MRSA_HEADER = """>lcl|CP015447.2_cds_ARI72360.1_79 [locus_tag=A6V38_00405] [protein=PBP2a family beta-lactam-resistant peptidoglycan transpeptidase MecA] [protein_id=ARI72360.1] [location=complement(76807..78816)] [gbkey=CDS]"""
 
@@ -160,15 +184,19 @@ MRSA_SEQUENCE = """TTGATGAAAAAGATAAAAATTGTTCCACTTATTTTAATAGTTGTAGTTGTCGGGTTTGGTA
 with open('mrsa_fasta.txt') as f_in:
     genome_data = ''.join([l.strip() for l in f_in if not l.startswith('>')])
 
-"""
 matches = {}
 
 meca_target = TargetGene(MRSA_HEADER, MRSA_SEQUENCE)
 spacers = list(meca_target.find_protospacers())
+
 for spacer in spacers:
     spacer_seq = spacer[0]
     expression = r'(?=(' + spacer_seq + r'))'
     hits = re.finditer(expression, genome_data)
+    for hit in hits:
+        print(f"{spacer_seq} found at {hit.span(1)}")
+        matches[spacer_seq] = (hit, hit.span(1))
+    hits = re.finditer(expression, get_complement(genome_data))
     for hit in hits:
         print(f"{spacer_seq} found at {hit.span(1)}")
         matches[spacer_seq] = (hit, hit.span(1))
@@ -177,6 +205,3 @@ print("spacers: ", len(spacers))
 print("matches: ", len(matches))
 # for x in matches:
 #     print(matches[x][0], matches[x][1])
-"""
-
-meca = Gene(MECA_HEADER, MECA_SEQUENCE)
