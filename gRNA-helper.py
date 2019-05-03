@@ -88,8 +88,12 @@ class Gene():
         # 'location' data must be parsed from a string into integers.
         # self.info['location'] should return a pair of ints as a tuple.
         if 'location' in d.keys():
-            location = re.sub(r'[<>]', '', d['location'])
-            d['location'] = tuple([int(i) for i in location.split('..')])
+            location = re.sub(r'[(complement)<>\(\)]', '', d['location'])
+            if 'complement' in location:
+                # location = location.replace('complement', '')
+                self.on_complement_strand = True
+            start, end = [int(i) for i in location.split('..')]
+            d['location'] = {'start': start, 'end': end}
 
         return d
 
