@@ -94,9 +94,12 @@ class TargetGene(Gene):
     A Gene object that contains functionality for finding eligible knockout
     targets. By default, an eligible sequence is a 20-mer followed by a
     terminal "NGG".
+
+    To create a TargetGene from an existing Gene, use:
+        [NEW_TARGET_GENE] = TargetGene([GENE].header, [GENE].sequence)
     """
 
-    def find_spacers(self, k=20, pam_sequence='NGG'):
+    def find_protospacers(self, k=20, pam_sequence='NGG'):
         pam_sequence = self.seq_to_regex(pam_sequence)
         expression = r'(?=([ACGT]{' + str(k) + r'}' + str(pam_sequence) + r'))'
         for result in re.finditer(expression, self.sequence):
@@ -132,7 +135,7 @@ with open('mrsa_fasta.txt') as f_in:
 matches = {}
 
 meca_target = TargetGene(MRSA_HEADER, MRSA_SEQUENCE)
-spacers = list(meca_target.find_spacers())
+spacers = list(meca_target.find_protospacers())
 for spacer in spacers:
     spacer_seq = spacer[0]
     expression = r'(?=(' + spacer_seq + r'))'
