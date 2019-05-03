@@ -31,9 +31,25 @@ class Genome():
 
         SAMPLE: "Sequence CGATCGTAATGCTCA hit found in [GENE] at [INDEX]"
         """
+
         hits = []
         # DO STUFF
         return hits
+
+    def choose_gene(self, query=input()):
+        """
+        <<WORK IN PROGRESS>>
+        Given a search query, return a menu of all results and return the chosen
+        result.
+        """
+        # Create a list of Gene objects whose "protein" fields contain the query
+        results = [gene for gene in self.gene_dict.values() if
+                   gene.info['protein'].lower().contains(query.lower())]
+        menu = '\n'.join([f"{i}) {gene.info['protein']}" for gene, i in (results, range(1, len(results) + 1))])
+        print(menu)
+
+        choice = int(input("Choose a gene.\n>")) - 1
+        return results[choice]
 
 
 class Gene():
