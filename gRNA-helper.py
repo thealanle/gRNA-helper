@@ -166,7 +166,20 @@ class TargetGene(Gene):
         # This section lacks complete functionality, so it's overly verbose
         # for what it currently accomplishes.
         result = sequence
-        result = result.replace('N', '[ACGT]')
+
+        substitution_dict = {
+            'N': '[ACGT]',
+            'R': '[GA]',
+            'Y': '[TC]',
+            'M': '[AC]',
+            'S': '[GC]',
+            'W': '[AT]',
+            'K': '[GT]',
+        }
+
+        for sub in substitution_dict:
+            result = result.replace(sub, substitution_dict[sub])
+
         return result
 
 
