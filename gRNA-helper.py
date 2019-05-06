@@ -8,18 +8,19 @@ class Genome():
     """
 
     def __init__(self, fasta_file=None):
-        self.gene_dict = {}
+        self.genes = {}
 
         # If the Genome instance is called with a path to a FASTA file, load it.
         if fasta_file:
-            self.gene_dict = self.load_fasta(fasta_file)
+            self.load_fasta(fasta_file)
+            print(f"{fasta_file} loaded.")
 
 # define the function
     def load_fasta(self, fasta_file):
         """
         Given a file in FASTA format, turn each entry into a header string and
         a sequence string, then pass those headers and sequences into new Gene
-        instances. Then add each of those gene instances to self.gene_dict.
+        instances. Then add each of those gene instances to self.genes.
         """
         # initialize dict and lists to create elements or dict
         header_seq_dict = {}
@@ -37,8 +38,15 @@ class Genome():
             DNA_fixed = DNA_seq.replace('\n', '')
             sequences.append(DNA_fixed)
     # creation of dictionary
-        header_seq_dict = dict(zip(header, sequences))
-        return(header_seq_dict)
+        # header_seq_dict = dict(zip(header, sequences))
+        # return(header_seq_dict)
+        for h, s in zip(header, sequences):
+            self.add_gene(h, s)
+
+    def add_gene(self, header, sequence):
+        gene = Gene(header, sequence)
+        id = gene.info['gene_id']
+        self.genes[id] = gene
 
     def find_hits(self, target_sequence):
         """
@@ -56,7 +64,7 @@ class Genome():
         for spacer in spacers:
             spacer_seq = spacer[0]
             expression = r'(?=(' + spacer_seq + r'))'
-            hits = re.finditer(expression, genome_data)
+            hits = re.finditer(expression, target_genome)
             for hit in hits:
                 print(f"{spacer_seq} found at {hit.span(1)}")
                 matches[spacer_seq] = (hit, hit.span(1))
@@ -69,7 +77,7 @@ class Genome():
         result.
         """
         # Create a list of Gene objects whose "protein" fields contain the query
-        results = [gene for gene in self.gene_dict.values() if
+        results = [gene for gene in self.genes.values() if
                    gene.info['protein'].lower().contains(query.lower())]
         menu = '\n'.join([f"{i}) {gene.info['protein']}" for gene, i in (results, range(1, len(results) + 1))])
         print(menu)
@@ -114,11 +122,14 @@ class Gene():
         # 'location' data must be parsed from a string into integers.
         # self.info['location'] should return a pair of ints as a tuple.
         if 'location' in d.keys():
-            location = re.sub(r'[(complement)<>\(\)]', '', d['location'])
+            # Ignore "complement" and "join" parameters
+            location = re.sub(r'[(complement)(join)<>\(\)]', '', d['location'])
             if 'complement' in location:
                 # location = location.replace('complement', '')
                 self.on_complement_strand = True
-            start, end = [int(i) for i in location.split('..')]
+            loc_split = location.split('..')
+            start, end = int(loc_split[0]), int(loc_split[-1])
+            # start, end = [int(i) for i in location.split('..')]
             d['location'] = {'start': start, 'end': end}
 
         return d
@@ -146,13 +157,13 @@ class TargetGene(Gene):
     """
 
     def find_protospacers(self, k=20, pam_sequence='NGG'):
-        print("Finding protospacers...")
+        print(f"Finding protospacers in target gene {self.info['gene_id']}.")
         p_length = k + len(pam_sequence)  # Length of protospacer + PAM
         pam_sequence = self.seq_to_regex(pam_sequence)
         expression = r'(?=([ACGT]{' + str(k) + r'}' + str(pam_sequence) + r'))'
         gene_start = self.info['location']['start']
         gene_end = self.info['location']['end']
-        print("start and end: ", gene_start, gene_end, p_length)
+        print("start and end: ", gene_start, gene_end)
 
         # Search the forward strand
         for result in re.finditer(expression, self.sequence):
@@ -212,25 +223,41 @@ MRSA_SEQUENCE = """TTGATGAAAAAGATAAAAATTGTTCCACTTATTTTAATAGTTGTAGTTGTCGGGTTTGGTA
 
 # TEMPORARY GENOME FILE READING, concatenates all sequences into a single string
 # with open('mrsa_fasta.txt') as f_in:
-#     genome_data = ''.join([l.strip() for l in f_in if not l.startswith('>')])
+#     target_genome = ''.join([l.strip() for l in f_in if not l.startswith('>')])
 
-genome_data = Genome('mrsa_fasta.txt')
+target_genome = Genome('mrsa_fasta.txt')
 matches = {}
 
 meca_target = TargetGene(MRSA_HEADER, MRSA_SEQUENCE)
 spacers = list(meca_target.find_protospacers())
 
+# Old way for dummy data
+# for spacer in spacers:
+#     spacer_seq = spacer[0]
+#     expression = r'(?=(' + spacer_seq + r'))'
+#     hits = re.finditer(expression, target_genome)
+#     for hit in hits:
+#         print(f"{spacer_seq} found at {hit.span(1)}")
+#         matches[spacer_seq] = (hit, hit.span(1))
+#     hits = re.finditer(expression, get_complement(target_genome))
+#     for hit in hits:
+#         print(f"{spacer_seq} found at {hit.span(1)}")
+#         matches[spacer_seq] = (hit, hit.span(1))
+
+# New way for target_genome
+# To-do: convert hit.span to take into account the position of the gene
 for spacer in spacers:
     spacer_seq = spacer[0]
     expression = r'(?=(' + spacer_seq + r'))'
-    hits = re.finditer(expression, genome_data)
-    for hit in hits:
-        print(f"{spacer_seq} found at {hit.span(1)}")
-        matches[spacer_seq] = (hit, hit.span(1))
-    hits = re.finditer(expression, get_complement(genome_data))
-    for hit in hits:
-        print(f"{spacer_seq} found at {hit.span(1)}")
-        matches[spacer_seq] = (hit, hit.span(1))
+    for gene in target_genome.genes.values():
+        hits = list(re.finditer(expression, gene.sequence))
+        for hit in hits:
+            print(f"{spacer_seq} found at {hit.span(1)}")
+            matches[spacer_seq] = (hit, hit.span(1))
+        hits = re.finditer(expression, get_complement(gene.sequence))
+        for hit in hits:
+            print(f"{spacer_seq} found at {hit.span(1)}")
+            matches[spacer_seq] = (hit, hit.span(1))
 
 print("spacers: ", len(spacers))
 print("matches: ", len(matches))
