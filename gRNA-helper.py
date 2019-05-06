@@ -79,9 +79,11 @@ class Genome():
         # Create a list of Gene objects whose "protein" fields contain the query
         results = [gene for gene in self.genes.values() if query.lower() in
                    gene.info['protein'].lower()]
+        if len(results) == 0:
+            print("Search found 0 results.")
+            return None
         menu = '\n'.join([f"{i}) {gene.info['protein']}" for gene, i in zip(results, range(1, len(results) + 1))])
         print(menu)
-
         choice = int(input("Choose a gene.\n>")) - 1
         return results[choice]
 
@@ -156,7 +158,7 @@ class TargetGene(Gene):
     """
 
     def find_protospacers(self, k=20, pam_sequence='NGG'):
-        print(f"Finding protospacers in target gene {self.info['gene_id']}.")
+        print(f"Finding protospacers in target gene {self.info['gene_id']} \"{self.info['protein']}\".")
         p_length = k + len(pam_sequence)  # Length of protospacer + PAM
         pam_sequence = self.seq_to_regex(pam_sequence)
         expression = r'(?=([ACGT]{' + str(k) + r'}' + str(pam_sequence) + r'))'
@@ -219,47 +221,40 @@ def get_complement(sequence):
     return result
 
 
-MRSA_HEADER = """>lcl|CP015447.2_cds_ARI72360.1_79 [locus_tag=A6V38_00405] [protein=PBP2a family beta-lactam-resistant peptidoglycan transpeptidase MecA] [protein_id=ARI72360.1] [location=complement(76807..78816)] [gbkey=CDS]"""
-
-MRSA_SEQUENCE = """TTGATGAAAAAGATAAAAATTGTTCCACTTATTTTAATAGTTGTAGTTGTCGGGTTTGGTATATATTTTTATGCTTCAAAAGATAAAGAAATTAATAATACTATTGATGCAATTGAAGATAAAAATTTCAAACAAGTTTATAAAGATAGCAGTTATATTTCTAAAAGCGATAATGGTGAAGTAGAAATGACTGAACGTCCGATAAAAATATATAATAGTTTAGGCGTTAAAGATATAAACATTCAGGATCGTAAAATAAAAAAAGTATCTAAAAATAAAAAACGAGTAGATGCTCAATATAAAATTAAAACAAACTACGGTAACATTGATCGCAACGTTCAATTTAATTTTGTTAAAGAAGATGGTATGTGGAAGTTAGATTGGGATCATAGCGTCATTATTCCAGGAATGCAGAAAGACCAAAGCATACATATTGAAAATTTAAAATCAGAACGTGGTAAAATTTTAGACCGAAACAATGTGGAATTGGCCAATACAGGAACAGCATATGAGATAGGCATCGTTCCAAAGAATGTATCTAAAAAAGATTATAAAGCAATCGCTAAAGAACTAAGTATTTCTGAAGACTATATCAAACAACAAATGGATCAAAAGTGGGTACAAGATGATACCTTCGTTCCACTTAAAACCGTTAAAAAAATGGATGAATATTTAAGTGATTTCGCAAAAAAATTTCATCTTACAACTAATGAAACAGAAAGTCGTAACTATCCTCTAGAAAAAGCGACTTCACATCTATTAGGTTATGTTGGTCCCATTAACTCTGAAGAATTAAAACAAAAAGAATATAAAGGCTATAAAGATGATGCAGTTATTGGTAAAAAGGGACTCGAAAAACTTTACGATAAAAAGCTCCAACATGAAGATGGCTATCGTGTCACAATCGTTGACGATAATAGCAATACAATCGCACATACATTAATAGAGAAAAAGAAAAAAGATGGCAAAGATATTCAACTAACTATTGATGCTAAAGTTCAAAAGAGTATTTATAACAACATGAAAAATGATTATGGCTCAGGTACTGCTATCCACCCTCAAACAGGTGAATTATTAGCACTTGTAAGCACACCTTCATATGACGTCTATCCATTTATGTATGGCATGAGTAACGAAGAATATAATAAATTAACCGAAGATAAAAAAGAACCTCTGCTCAACAAGTTCCAGATTACAACTTCACCAGGTTCAACTCAAAAAATATTAACAGCAATGATTGGGTTAAATAACAAAACATTAGACGATAAAACAAGTTATAAAATCGATGGTAAAGGTTGGCAAAAAGATAAATCTTGGGGTGGTTACAACGTTACAAGATATGAAGTGGTAAATGGTAATATCGACTTAAAACAAGCAATAGAATCATCAGATAACATTTTCTTTGCTAGAGTAGCACTCGAATTAGGCAGTAAGAAATTTGAAAAAGGCATGAAAAAACTAGGTGTTGGTGAAGATATACCAAGTGATTATCCATTTTATAATGCTCAAATTTCAAACAAAAATTTAGATAATGAAATATTATTAGCTGATTCAGGTTACGGACAAGGTGAAATACTGATTAACCCAGTACAGATCCTTTCAATCTATAGCGCATTAGAAAATAATGGCAATATTAACGCACCTCACTTATTAAAAGACACGAAAAACAAAGTTTGGAAGAAAAATATTATTTCCAAAGAAAATATCAATCTATTAACTGATGGTATGCAACAAGTCGTAAATAAAACACATAAAGAAGATATTTATAGATCTTATGCAAACTTAATTGGCAAATCCGGTACTGCAGAACTCAAAATGAAACAAGGAGAAACTGGCAGACAAATTGGGTGGTTTATATCATATGATAAAGATAATCCAAACATGATGATGGCTATTAATGTTAAAGATGTACAAGATAAAGGAATGGCTAGCTACAATGCCAAAATCTCAGGTAAAGTGTATGATGAGCTATATGAGAACGGTAATAAAAAATACGATATAGATGAATAA"""
-
-# TEMPORARY GENOME FILE READING, concatenates all sequences into a single string
-# with open('mrsa_fasta.txt') as f_in:
-#     target_genome = ''.join([l.strip() for l in f_in if not l.startswith('>')])
-
 target_genome = Genome('mrsa_fasta.txt')
-target = target_genome.choose_gene('peptidase')
-ko_target = TargetGene(MRSA_HEADER, MRSA_SEQUENCE)
+target = None
+while target is None:
+    target = target_genome.choose_gene(input('Enter gene name:\n>'))
+ko_target = TargetGene(target.header, target.sequence)
 spacers = list(ko_target.find_protospacers())
-
-matches = {}
+# matches = {}
 
 # To-do: convert hit.span to take into account the position of the gene
+hit_count = 0
 for gene in target_genome.genes.values():
     for spacer in spacers:
         spacer_seq = spacer[0]
-        expression = r'(?=(' + spacer_seq + r'))'
-        hits = re.finditer(expression, gene.sequence)
-        # seq_length = len(gene.sequence)
         gene_start = gene.info['location']['start']
         gene_end = gene.info['location']['end']
 
+        expression = r'(?=(' + spacer_seq + r'))'
+        hits = re.finditer(expression, gene.sequence)
         # Iterate over the forward strand
         for hit in hits:
             print(f"{spacer_seq} found at ({hit.start(1) + gene_start}, {hit.end(1) + gene_start - 1})")
-            matches[spacer_seq] = (hit, hit.span(1))
+            # matches[spacer_seq] = (hit, hit.span(1))
+            hit_count += 1
             # if gene.info['gene_id'] != ko_target.info['gene_id']:
             #     print("off-target effect")
 
         # Iterate over the complement strand
         hits = re.finditer(expression, get_complement(gene.sequence))
+        if hits:
+            hit_detected = True
         for hit in hits:
             print(f"{spacer_seq} found at ({gene_end - hit.start(1)}, {gene_end - hit.end(1) + 1})")
-            matches[spacer_seq] = (hit, hit.span(1))
+            # matches[spacer_seq] = (hit, hit.span(1))
+            hit_count += 1
             # if gene.info['gene_id'] != ko_target.info['gene_id']:
             #     print("off-target effect")
-
-# print("number of spacers: ", len(spacers))
-# print("number of matches: ", len(matches))
-# for x in matches:
-#     print(matches[x][0], matches[x][1])
+print(f"{hit_count} hits in {gene_count} gene(s).")
