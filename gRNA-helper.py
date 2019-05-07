@@ -271,19 +271,20 @@ def main():
     guides = sorted(guides, key=lambda x: x[1])
 
     # Header for the output report.
-    log = [['Knockout Target', ko_target.id, ko_target.info['protein']],
-           ['gRNA Candidate', 'Off-Target Hits'], []]
+    log = [['Knockout Target', ko_target.id, ko_target.info['protein']], [],
+           ['gRNA Candidate', 'Off-Target Hits']]
 
     # Print and log the spacers and their number of off-target hits.
     for guide in guides:
         log.append([guide[0], str(guide[1])])
         # print(f"{guide[0]}: {guide[1]} off-target hit(s).")
 
+    # Open an output file and write the log contents to it.
     with open(OUTPUT_FILE, 'w') as f_out:
         for line in log:
             f_out.write(','.join(line) + '\n')
 
-    print(f"Results have been output to {OUTPUT_FILE}.")
+        print(f"Results have been output to {OUTPUT_FILE}.")
 
 
 if __name__ == '__main__':
