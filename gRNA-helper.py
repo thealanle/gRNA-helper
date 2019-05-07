@@ -218,6 +218,13 @@ class TargetGene(Gene):
         return result
 
 
+def dna_to_rna(sequence):
+    """
+    Given a protospacer, return the matching spacer.
+    """
+    return sequence.replace('T', 'U')
+
+
 def main():
     genome = Genome('mrsa_fasta.txt')
 
@@ -229,6 +236,7 @@ def main():
     spacers = set(ko_target.find_protospacers())
     matches = {}
 
+    off_target = []
     for gene in genome.genes.values():
         gene.find_hits(spacers)
         if len(gene.hits) > 0:
@@ -236,24 +244,16 @@ def main():
             # for hit in gene.hits:
             #     print(hit[0], hit[1], hit[2])
             matches[gene.id] = gene.hits
+            if gene.id != ko_target.id:
+                off_target.extend([spacer[0] for spacer in gene.hits])
 
-    off_target = []
-    for match in matches:
-        if match == ko_target.id:
-            pass
-        else:
-            print(f'{len(matches[match])} off target hits in {gene.id} "{gene.info["protein"]}')
-            for spacer in matches[match]:
-                off_target.append(spacer[0])
-                print(f"~{spacer[0]}")
-
-    off_target_count = [
-        [spacer[0], off_target.count(spacer[0])] for spacer in spacers]
-    off_target_count.sort(key=lambda x: x[1])
+    guides = [
+        [dna_to_rna(spacer[0][:-3]), off_target.count(spacer[0])] for spacer in spacers]
+    guides.sort(key=lambda x: x[1])
 
     # Print the sorted list of spacers and their number of off-target hits
-    for each in off_target_count:
-        print(each[0], each[1])
+    for guide in guides:
+        print(guide[0], guide[1])
 
 
 if __name__ == '__main__':
