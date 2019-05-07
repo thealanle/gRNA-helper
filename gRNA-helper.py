@@ -3,8 +3,8 @@ import re
 
 class Genome():
     """
-    A collection of Gene objects. Contains functionality for iterating over
-    itself and returning matches.
+    A collection of Gene objects. Contains functionality for loading Genes from
+    a FASTA file.
     """
 
     def __init__(self, fasta_file=None):
