@@ -142,21 +142,13 @@ class Gene():
                 spacer_start = hit.start(1) + gene_start
                 spacer_end = hit.end(1) + gene_start - 1
                 self.hits.append((spacer_seq, spacer_start, spacer_end))
-                # print(f"{spacer_seq} found at ({spacer_start}, {spacer_end})")
-                # matches[spacer_seq] = (hit, hit.span(1))
-                # if gene.id != ko_target.id:
-                #     print("off-target effect")
 
             # Iterate over the complement strand
-            hits = re.finditer(expression, get_complement(self.sequence))
+            hits = re.finditer(expression, self.get_complement())
             for hit in hits:
                 spacer_start = gene_end - hit.start(1)
                 spacer_end = gene_end - hit.end(1) + 1
                 self.hits.append((spacer_seq, spacer_start, spacer_end))
-                # print(f"{spacer_seq} found at ({spacer_start}, {spacer_end})")
-                # matches[spacer_seq] = (hit, hit.span(1))
-                # if gene.id != ko_target.id:
-                #     print("off-target effect")
 
 
 class TargetGene(Gene):
@@ -176,7 +168,6 @@ class TargetGene(Gene):
         expression = r'(?=([ACGT]{' + str(k) + r'}' + str(pam_sequence) + r'))'
         gene_start = self.info['location']['start']
         gene_end = self.info['location']['end']
-        print("start and end: ", gene_start, gene_end)
         count = 0
 
         # Search the forward strand
@@ -185,7 +176,7 @@ class TargetGene(Gene):
             match_start = gene_start + result.start()
             match_end = match_start + p_length - 1
             span = (match_start, match_end)
-            print(match, span)
+            # print(match, span)
             count += 1
             yield match, span
 
@@ -195,7 +186,7 @@ class TargetGene(Gene):
             match_start = gene_end - result.start()
             match_end = match_start - p_length + 1
             span = (match_start, match_end)
-            print(match, span, "complement strand")
+            # print(match, span, "complement strand")
             count += 1
             yield match, span
 
@@ -227,26 +218,42 @@ class TargetGene(Gene):
         return result
 
 
-def get_complement(sequence):
-    pairs = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
-    result = ''.join([pairs[nuc] for nuc in sequence[::-1]])
-    return result
-
-
 def main():
     genome = Genome('mrsa_fasta.txt')
+
     target = None
     while target is None:
         target = genome.choose_gene(input('Enter gene name:\n>'))
     ko_target = TargetGene(target.header, target.sequence)
-    spacers = list(ko_target.find_protospacers())
+
+    spacers = set(ko_target.find_protospacers())
+    matches = {}
 
     for gene in genome.genes.values():
         gene.find_hits(spacers)
         if len(gene.hits) > 0:
-            print(f"{len(gene.hits)} hits found in {gene.id} AKA {gene.info['protein']}:")
-            for hit in gene.hits:
-                print(hit[0], hit[1], hit[2])
+            print(f"{len(gene.hits)} hits found in {gene.id} \"{gene.info['protein']}\"")
+            # for hit in gene.hits:
+            #     print(hit[0], hit[1], hit[2])
+            matches[gene.id] = gene.hits
+
+    off_target = []
+    for match in matches:
+        if match == ko_target.id:
+            pass
+        else:
+            print(f'{len(matches[match])} off target hits in {gene.id} "{gene.info["protein"]}')
+            for spacer in matches[match]:
+                off_target.append(spacer[0])
+                print(f"~{spacer[0]}")
+
+    off_target_count = [
+        [spacer[0], off_target.count(spacer[0])] for spacer in spacers]
+    off_target_count.sort(key=lambda x: x[1])
+
+    # Print the sorted list of spacers and their number of off-target hits
+    for each in off_target_count:
+        print(each[0], each[1])
 
 
 if __name__ == '__main__':
