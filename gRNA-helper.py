@@ -198,10 +198,6 @@ class TargetGene(Gene):
         result.
         """
 
-        # This section lacks complete functionality, so it's overly verbose
-        # for what it currently accomplishes.
-        result = sequence
-
         substitution_dict = {
             'N': '[ACGT]',
             'R': '[GA]',
@@ -213,9 +209,9 @@ class TargetGene(Gene):
         }
 
         for sub in substitution_dict:
-            result = result.replace(sub, substitution_dict[sub])
+            sequence = sequence.replace(sub, substitution_dict[sub])
 
-        return result
+        return sequence
 
 
 def dna_to_rna(sequence):
@@ -251,9 +247,17 @@ def main():
         [dna_to_rna(spacer[0][:-3]), off_target.count(spacer[0])] for spacer in spacers]
     guides.sort(key=lambda x: x[1])
 
+    log = [['Knockout Target', ko_target.id, ko_target.info['protein']],
+           ['gRNA Candidate', 'Off-Target Hits']]
+
     # Print the sorted list of spacers and their number of off-target hits
     for guide in guides:
-        print(guide[0], guide[1])
+        log.append([guide[0], str(guide[1])])
+        print(f"{guide[0]}: {guide[1]} off-target hit(s).")
+
+    with open('output.csv', 'w') as f_out:
+        for line in log:
+            f_out.write(','.join(line) + '\n')
 
 
 if __name__ == '__main__':
