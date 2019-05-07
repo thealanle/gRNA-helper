@@ -45,34 +45,11 @@ class Genome():
 
     def add_gene(self, header, sequence):
         gene = Gene(header, sequence)
-        id = gene.info['gene_id']
+        id = gene.id
         self.genes[id] = gene
-
-    def find_hits(self, target_sequence):
-        """
-        <<WORK IN PROGRESS>>
-        Given a target sequence (representing a k-nucleotide-long sequence and a
-        PAM), return a list of hits, the genes in which they occur, and the
-        locations of the hits within the genome.
-
-        SAMPLE: "Sequence CGATCGTAATGCTCA hit found in [GENE] at [INDEX]"
-        """
-
-        hits = []
-        ko_target = TargetGene(MRSA_HEADER, MRSA_SEQUENCE)
-        spacers = list(ko_target.find_protospacers())
-        for spacer in spacers:
-            spacer_seq = spacer[0]
-            expression = r'(?=(' + spacer_seq + r'))'
-            hits = re.finditer(expression, target_genome)
-            for hit in hits:
-                print(f"{spacer_seq} found at {hit.span(1)}")
-                matches[spacer_seq] = (hit, hit.span(1))
-        return hits
 
     def choose_gene(self, query):
         """
-        <<WORK IN PROGRESS>>
         Given a search query, return a menu of all results and return the chosen
         result.
         """
@@ -101,6 +78,7 @@ class Gene():
         self.sequence = sequence
         self.info = self.parse_header(self.header)
         self.complement = None  # This is None until get_complement is called
+        self.hits = []
 
     def parse_header(self, header):
         """
@@ -114,7 +92,7 @@ class Gene():
 
         # There is only one instance of Group 1, which contains database and
         # gene ID information.
-        d['gene_id'] = results[0].group(1)
+        self.id = results[0].group(1)
 
         # Iterate over the remaining match groups, which contain keys and values
         # that can be added to the dictionary self.info.
@@ -146,6 +124,40 @@ class Gene():
             self.complement = ''.join([pairs[nuc] for nuc in reverse])
         return self.complement
 
+    def find_hits(self, spacers):
+        """
+        Given a target sequence (representing a k-nucleotide-long sequence and a
+        PAM), return a list of hits and the positions at which they occur.
+        """
+
+        for spacer in spacers:
+            spacer_seq = spacer[0]
+            gene_start = self.info['location']['start']
+            gene_end = self.info['location']['end']
+
+            expression = r'(?=(' + spacer_seq + r'))'
+            hits = re.finditer(expression, self.sequence)
+            # Iterate over the forward strand
+            for hit in hits:
+                spacer_start = hit.start(1) + gene_start
+                spacer_end = hit.end(1) + gene_start - 1
+                self.hits.append((spacer_seq, spacer_start, spacer_end))
+                # print(f"{spacer_seq} found at ({spacer_start}, {spacer_end})")
+                # matches[spacer_seq] = (hit, hit.span(1))
+                # if gene.id != ko_target.id:
+                #     print("off-target effect")
+
+            # Iterate over the complement strand
+            hits = re.finditer(expression, get_complement(self.sequence))
+            for hit in hits:
+                spacer_start = gene_end - hit.start(1)
+                spacer_end = gene_end - hit.end(1) + 1
+                self.hits.append((spacer_seq, spacer_start, spacer_end))
+                # print(f"{spacer_seq} found at ({spacer_start}, {spacer_end})")
+                # matches[spacer_seq] = (hit, hit.span(1))
+                # if gene.id != ko_target.id:
+                #     print("off-target effect")
+
 
 class TargetGene(Gene):
     """
@@ -158,7 +170,7 @@ class TargetGene(Gene):
     """
 
     def find_protospacers(self, k=20, pam_sequence='NGG'):
-        print(f"Finding protospacers in target gene {self.info['gene_id']} \"{self.info['protein']}\".")
+        print(f"Finding protospacers in target gene {self.id} \"{self.info['protein']}\".")
         p_length = k + len(pam_sequence)  # Length of protospacer + PAM
         pam_sequence = self.seq_to_regex(pam_sequence)
         expression = r'(?=([ACGT]{' + str(k) + r'}' + str(pam_sequence) + r'))'
@@ -221,40 +233,21 @@ def get_complement(sequence):
     return result
 
 
-target_genome = Genome('mrsa_fasta.txt')
-target = None
-while target is None:
-    target = target_genome.choose_gene(input('Enter gene name:\n>'))
-ko_target = TargetGene(target.header, target.sequence)
-spacers = list(ko_target.find_protospacers())
-# matches = {}
+def main():
+    genome = Genome('mrsa_fasta.txt')
+    target = None
+    while target is None:
+        target = genome.choose_gene(input('Enter gene name:\n>'))
+    ko_target = TargetGene(target.header, target.sequence)
+    spacers = list(ko_target.find_protospacers())
 
-# To-do: convert hit.span to take into account the position of the gene
-hit_count = 0
-for gene in target_genome.genes.values():
-    for spacer in spacers:
-        spacer_seq = spacer[0]
-        gene_start = gene.info['location']['start']
-        gene_end = gene.info['location']['end']
+    for gene in genome.genes.values():
+        gene.find_hits(spacers)
+        if len(gene.hits) > 0:
+            print(f"{len(gene.hits)} hits found in {gene.id} AKA {gene.info['protein']}:")
+            for hit in gene.hits:
+                print(hit[0], hit[1], hit[2])
 
-        expression = r'(?=(' + spacer_seq + r'))'
-        hits = re.finditer(expression, gene.sequence)
-        # Iterate over the forward strand
-        for hit in hits:
-            print(f"{spacer_seq} found at ({hit.start(1) + gene_start}, {hit.end(1) + gene_start - 1})")
-            # matches[spacer_seq] = (hit, hit.span(1))
-            hit_count += 1
-            # if gene.info['gene_id'] != ko_target.info['gene_id']:
-            #     print("off-target effect")
 
-        # Iterate over the complement strand
-        hits = re.finditer(expression, get_complement(gene.sequence))
-        if hits:
-            hit_detected = True
-        for hit in hits:
-            print(f"{spacer_seq} found at ({gene_end - hit.start(1)}, {gene_end - hit.end(1) + 1})")
-            # matches[spacer_seq] = (hit, hit.span(1))
-            hit_count += 1
-            # if gene.info['gene_id'] != ko_target.info['gene_id']:
-            #     print("off-target effect")
-print(f"{hit_count} hits in {gene_count} gene(s).")
+if __name__ == '__main__':
+    main()
