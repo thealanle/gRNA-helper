@@ -61,8 +61,16 @@ class Genome():
             return None
         menu = '\n'.join([f"{i}) {gene.info['protein']}" for gene, i in zip(results, range(1, len(results) + 1))])
         print(menu)
-        choice = int(input("Choose a gene.\n>")) - 1
-        return results[choice]
+        while True:
+            try:
+                choice = int(input("Choose a gene.\n>")) - 1
+                return results[choice]
+            except TypeError as ex:
+                print("Invalid choice.")
+            except IndexError as ex:
+                print("Selection out of range.")
+            except ValueError as ex:
+                print("Invalid value. Please enter a number.")
 
 
 class Gene():
@@ -221,8 +229,24 @@ def dna_to_rna(sequence):
     return sequence.replace('T', 'U')
 
 
+def choose_file():
+    """
+    Prompt the user for a filename and return the filename if the file exists.
+    """
+    while True:
+        try:
+            response = input("Enter the name of a FASTA file:\n>")
+            f_in = open(response, 'r')
+            f_in.close()
+            return response
+        except IOError as ex:
+            print(ex.strerror)
+
+
 def main():
-    genome = Genome('mrsa_fasta.txt')
+    OUTPUT_FILE = 'output.csv'
+
+    genome = Genome(choose_file())
 
     target = None
     while target is None:
@@ -253,11 +277,13 @@ def main():
     # Print and log the spacers and their number of off-target hits.
     for guide in guides:
         log.append([guide[0], str(guide[1])])
-        print(f"{guide[0]}: {guide[1]} off-target hit(s).")
+        # print(f"{guide[0]}: {guide[1]} off-target hit(s).")
 
-    with open('output.csv', 'w') as f_out:
+    with open(OUTPUT_FILE, 'w') as f_out:
         for line in log:
             f_out.write(','.join(line) + '\n')
+
+    print(f"Results have been output to {OUTPUT_FILE}.")
 
 
 if __name__ == '__main__':
