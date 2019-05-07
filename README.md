@@ -7,7 +7,7 @@
 
 ## Usage
 
-1. Make sure **gRNA-helper.py** and a valid FASTA file representing a genome are in the same directory.
+1. Make sure **gRNA-helper.py** and an annotated FASTA file representing a genome are in the same directory.
 2. Run **gRNA-helper.py**: `python3 gRNA-helper.py`
 3. Enter a path to the desired FASTA file.
 4. Search for and select a gene to knock out.
