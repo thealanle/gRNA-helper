@@ -243,14 +243,18 @@ def main():
             if gene.id != ko_target.id:
                 off_target.extend([spacer[0] for spacer in gene.hits])
 
+    # Truncate the PAM-matching sequence from the protospacer and convert the
+    # result to an RNA sequence. In addition, append the number of off-targets.
     guides = [
         [dna_to_rna(spacer[0][:-3]), off_target.count(spacer[0])] for spacer in spacers]
-    guides.sort(key=lambda x: x[1])
+    guides = sorted(guides, key=lambda x: x[1])
 
+    # Header for the output report.
     log = [['Knockout Target', ko_target.id, ko_target.info['protein']],
            ['gRNA Candidate', 'Off-Target Hits']]
 
-    # Print the sorted list of spacers and their number of off-target hits
+    # Print the spacers and their number of off-target hits.
+    # Append this information to the log.
     for guide in guides:
         log.append([guide[0], str(guide[1])])
         print(f"{guide[0]}: {guide[1]} off-target hit(s).")
